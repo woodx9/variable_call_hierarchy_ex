@@ -1,8 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { parse } from 'node:path';
-import test from 'node:test';
 import * as vscode from 'vscode';
+import { cppTreeSitter  } from './cppTreeSitter';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -45,6 +44,7 @@ async function findClassVariableReferencesInFunctions(document: vscode.TextDocum
             document.uri
         );
 
+
 		// 找到目标类内symbol
 		symbols = symbols.filter(symbol => symbol.name === className && symbol.kind === vscode.SymbolKind.Class).map(symbol => {
 			return symbol.children || [];
@@ -57,16 +57,32 @@ async function findClassVariableReferencesInFunctions(document: vscode.TextDocum
             return;
         }
 
+
+		// 3. 查找类内的所有函数
 		const functionSymbols = parseFunctionSymbols(symbols);
 
+		// // 4. 寻找函数实现位置
+		// for (const symbol of definitionSymbols) {
+		// 	const nameRange = cppTreeSitter.getFunctionNameRange(document.uri, symbol.range);
+
+		// 	const implementationItem = await vscode.commands.executeCommand(
+		// 		'vscode.executeDefinitionProvider',
+		// 		document.uri,
+		// 		nameRange.start
+		// 	);
+
+		// 	console.log(implementationItem);
+		// }
 
 
-		// 4. 找到变量在类内被使用的所有函数位置
+
+
+		// 5. 找到变量在类内被使用的所有函数位置:在类定义处和实现处
 		// 这里用vscode.executeReferenceProvider，只能知道reference被使用的位置，找到准确函数可以用tree-sitter代替
 		// 这里为了方便直接用函数查找
 		const targetVariableReferences = await vscode.commands.executeCommand<ReferenceInfo[]>(
 			'vscode.executeReferenceProvider',
-			document.uri,  // 目标文档
+			document.uri,  // 这里要换成实现的uri
 			targetVariableSymbol.selectionRange.end // cpp一定要用selectionRange.end
 		);
 
@@ -75,7 +91,7 @@ async function findClassVariableReferencesInFunctions(document: vscode.TextDocum
 		console.log('test');
 
 
-		// // 5. 查找函数的call hierarchy
+		// 6. 查找函数的call hierarchy
 		for (const reference of targetFunctionSymbols) {
 			// 文件是当前打开的文件
 			const uri = document.uri;
